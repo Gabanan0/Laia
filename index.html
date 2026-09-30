@@ -23,7 +23,8 @@ const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const authgate=document.querySelector("#authgate"),authEmail=document.querySelector("#authEmail"),authButton=document.querySelector("#authButton"),authmsg=document.querySelector("#authmsg");\nconst OWNER_EMAIL="gaba.inclouds@icloud.com";
+const authgate=document.querySelector("#authgate"),authEmail=document.querySelector("#authEmail"),authButton=document.querySelector("#authButton"),authmsg=document.querySelector("#authmsg");
+const OWNER_EMAIL="gaba.inclouds@icloud.com";
 const sessionId=crypto.randomUUID?.()||String(Date.now());
 async function refreshGate(){const {data:{session}}=await sb.auth.getSession();authgate.classList.toggle("hidden",!!session);return session}
 authEmail.value=OWNER_EMAIL;
