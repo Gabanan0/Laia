@@ -19,13 +19,13 @@
 <script>
 const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),voiceBtn=document.querySelector("#voice"),statusEl=document.querySelector("#status");
 let voiceOn=true;
-let laiaVoiceId='';
 let currentAudio=null;
-try{laiaVoiceId=localStorage.getItem('laiaVoiceId')||''}catch{}
+let audioCtx=null;
 const conversation=[];
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
+const SPEAK_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-speak";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const authgate=document.querySelector("#authgate"),authEmail=document.querySelector("#authEmail"),authButton=document.querySelector("#authButton"),authmsg=document.querySelector("#authmsg");
 const OWNER_EMAIL="gaba.inclouds@icloud.com";
@@ -40,9 +40,40 @@ setInterval(()=>{if(Math.random()>.55)blink()},1800);
 document.addEventListener("pointermove",e=>{const x=(e.clientX/innerWidth-.5)*15,y=(e.clientY/innerHeight-.5)*10;pupils.forEach(p=>p.style.transform=`translate(${x}px,${y}px)`)});
 function add(text,who){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
 function rememberTurn(role,content){conversation.push({role,content});if(conversation.length>18)conversation.splice(0,conversation.length-18)}
-async function api(body){const session=await refreshGate();if(!session)throw new Error("Login required");return fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify(body)})}
-async function setupLaiaVoice(){if(laiaVoiceId)return true;statusEl.textContent="CREATING LAIA VOICE…";try{const d=await api({action:"voice-design"});if(!d.ok)throw new Error("design");const data=await d.json();const p=data.previews?.[0];if(!p?.id)throw new Error("preview");const cr=await api({action:"voice-create",generatedVoiceId:p.id});if(!cr.ok)throw new Error("create");const made=await cr.json();laiaVoiceId=made.voiceId;localStorage.setItem("laiaVoiceId",laiaVoiceId);return true}catch(e){console.error("LAIA voice setup",e);statusEl.textContent="VOICE SETUP FAILED";return false}}
-async function speak(text){if(!voiceOn)return;try{if(!(await setupLaiaVoice()))return;const r=await api({action:"tts",text,voiceId:laiaVoiceId});if(!r.ok)throw new Error("tts");const blob=await r.blob();if(currentAudio){currentAudio.pause();URL.revokeObjectURL(currentAudio.src)}currentAudio=new Audio(URL.createObjectURL(blob));currentAudio.onplay=()=>laia.classList.add("talking");currentAudio.onended=()=>{laia.classList.remove("talking");URL.revokeObjectURL(currentAudio.src)};currentAudio.onerror=()=>laia.classList.remove("talking");await currentAudio.play()}catch(e){console.error("LAIA voice",e);laia.classList.remove("talking")}}
+function unlockAudio(){
+ try{
+  const AudioContextCtor=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextCtor)return;
+  if(!audioCtx)audioCtx=new AudioContextCtor();
+  if(audioCtx.state==="suspended")audioCtx.resume();
+ }catch(e){console.error("Audio unlock",e)}
+}
+async function speak(text){
+ if(!voiceOn)return;
+ try{
+  const session=await refreshGate();
+  if(!session)throw new Error("Login required");
+  statusEl.textContent="LAIA SPEAKS…";
+  const r=await fetch(SPEAK_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({text})});
+  if(!r.ok)throw new Error("tts "+r.status);
+  const bytes=await r.arrayBuffer();
+  unlockAudio();
+  if(!audioCtx)throw new Error("Audio unavailable");
+  const buffer=await audioCtx.decodeAudioData(bytes.slice(0));
+  if(currentAudio){try{currentAudio.stop()}catch{}}
+  const source=audioCtx.createBufferSource();
+  source.buffer=buffer;
+  source.connect(audioCtx.destination);
+  currentAudio=source;
+  laia.classList.add("talking");
+  source.onended=()=>{laia.classList.remove("talking");if(currentAudio===source)currentAudio=null;statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"};
+  source.start(0);
+ }catch(e){
+  console.error("LAIA voice",e);
+  laia.classList.remove("talking");
+  statusEl.textContent="VOICE FAILED";
+ }
+}
 async function brainReply(raw){
 const session=await refreshGate();if(!session)throw new Error("Login required");
 const res=await fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({message:raw,sessionId,history:conversation.slice(-18)})});
@@ -58,7 +89,7 @@ else if(/liebe|mag dich|süss|süß/.test(t)){r="Awww. Das nehme ich jetzt einfa
 else if(/\?$/.test(raw.trim())){r="Hmm… gute Frage. Ich bin gerade noch die kleine Browser-Version von mir — für echte intelligente Antworten brauchen wir als Nächstes mein KI-Gehirn.";m="skeptical"}
 else {const opts=["Okayyy, erzähl weiter 👀","Mhm. Und was macht das gerade mit dir?","Ich hör dir zu :)","Das klingt nach einer Geschichte. Mehr davon."];r=opts[Math.floor(Math.random()*opts.length)]}
 setMood(m);setTimeout(()=>{add(r,"laia");speak(r);setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},2200)},350)}
-form.addEventListener("submit",async e=>{e.preventDefault();const t=input.value.trim();if(!t)return;add(t,"me");input.value="";if(!(await refreshGate()))return;statusEl.textContent="LAIA THINKS…";try{const r=await brainReply(t);if(!r)throw new Error("Empty reply");setMood("happy");add(r,"laia");rememberTurn("user",t);rememberTurn("assistant",r);speak(r)}catch(err){add("Mein Gehirn ist gerade nicht erreichbar. Versuch es gleich nochmal :)","laia");setMood("skeptical")}finally{statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"}});
-voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(!voiceOn&&currentAudio){currentAudio.pause();currentAudio=null;}statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
-laia.addEventListener("click",()=>{setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)});
+form.addEventListener("submit",async e=>{e.preventDefault();if(voiceOn)unlockAudio();const t=input.value.trim();if(!t)return;add(t,"me");input.value="";if(!(await refreshGate()))return;statusEl.textContent="LAIA THINKS…";try{const r=await brainReply(t);if(!r)throw new Error("Empty reply");setMood("happy");add(r,"laia");rememberTurn("user",t);rememberTurn("assistant",r);speak(r)}catch(err){add("Mein Gehirn ist gerade nicht erreichbar. Versuch es gleich nochmal :)","laia");setMood("skeptical")}finally{statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"}});
+voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(voiceOn)unlockAudio();if(!voiceOn&&currentAudio){try{currentAudio.stop()}catch{}currentAudio=null;laia.classList.remove("talking")}statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
+laia.addEventListener("click",()=>{unlockAudio();setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)});
 </script></body></html>
