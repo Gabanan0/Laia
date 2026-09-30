@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <meta name="theme-color" content="#050505">
+  <title>LAIA</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      height: 100dvh;
+      overflow: hidden;
+      background: #050505;
+      color: white;
+      font-family: system-ui, sans-serif;
+    }
+
+    main {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .name {
+      position: absolute;
+      top: 25px;
+      left: 25px;
+      font-size: 13px;
+      letter-spacing: .35em;
+      opacity: .55;
+    }
+
+    /* LAIA */
+    .face {
+      position: relative;
+      width: min(90vw, 420px);
+      height: 280px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* eyes */
+    .eye {
+      position: absolute;
+      top: 78px;
+      width: 88px;
+      height: 88px;
+
+      border: 7px solid white;
+      border-radius: 50%;
+
+      transition:
+        height .22s,
+        top .22s,
+        transform .35s,
+        border .22s;
+    }
+
+    .eye.left {
+      left: 55px;
+    }
+
+    .eye.right {
+      right: 55px;
+    }
+
+    .pupil {
+      position: absolute;
+
+      width: 24px;
+      height: 30px;
+
+      left: 25px;
+      top: 22px;
+
+      background: white;
+      border-radius: 50%;
+
+      transition: transform .15s;
+    }
+
+    /* eyebrows */
+    .brow {
+      position: absolute;
+
+      top: 43px;
+
+      width: 68px;
+      height: 25px;
+
+      border-top: 7px solid white;
+      border-radius: 50%;
+
+      transition: .35s;
+    }
+
+    .brow.left {
+      left: 64px;
+      transform: rotate(-8deg);
+    }
+
+    .brow.right {
+      right: 64px;
+      transform: rotate(8deg);
+    }
+
+    /* mouth */
+    .mouth {
+      position: absolute;
+
+      left: 50%;
+      top: 198px;
+
+      width: 52px;
+      height: 26px;
+
+      transform: translateX(-50%);
+
+      border-bottom: 7px solid white;
+      border-radius: 0 0 50% 50%;
+
+      transition: .35s;
+    }
+
+    /* BLINK */
+
+    .face.blink .eye {
+      height: 8px;
+      top: 115px;
+
+      border-width: 0 0 7px 0;
+    }
+
+    .face.blink .pupil {
+      opacity: 0;
+    }
+
+    /* HAPPY */
+
+    .face.happy .eye {
+      height: 40px;
+      top: 100px;
+
+      border-width: 7px 0 0 0;
+    }
+
+    .face.happy .pupil {
+      opacity: 0;
+    }
+
+    .face.happy .mouth {
+      width: 78px;
+      height: 40px;
+    }
+
+    /* SKEPTICAL */
+
+    .face.skeptical .brow.left {
+      top: 54px;
+      transform: rotate(17deg);
+    }
+
+    .face.skeptical .brow.right {
+      top: 34px;
+      transform: rotate(-14deg);
+    }
+
+    .face.skeptical .mouth {
+      width: 32px;
+      transform: translateX(-50%) rotate(-8deg);
+    }
+
+    /* SURPRISED */
+
+    .face.surprised .mouth {
+      width: 32px;
+      height: 32px;
+
+      border: 7px solid white;
+      border-radius: 50%;
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 30px;
+
+      font-size: 11px;
+      letter-spacing: .16em;
+
+      opacity: .28;
+    }
+  </style>
+</head>
+
+
+<body>
+
+<main>
+
+  <div class="name">LAIA</div>
+
+  <div class="face" id="laia">
+
+    <div class="brow left"></div>
+    <div class="brow right"></div>
+
+    <div class="eye left">
+      <div class="pupil"></div>
+    </div>
+
+    <div class="eye right">
+      <div class="pupil"></div>
+    </div>
+
+    <div class="mouth"></div>
+
+  </div>
+
+  <div class="hint">
+    TAP LAIA
+  </div>
+
+</main>
+
+
+<script>
+
+const laia = document.querySelector("#laia");
+const pupils = document.querySelectorAll(".pupil");
+
+const emotions = [
+  "",
+  "happy",
+  "skeptical",
+  "surprised"
+];
+
+let emotion = 0;
+
+
+/* TAP = CHANGE EXPRESSION */
+
+laia.addEventListener("click", () => {
+
+  emotion++;
+
+  if (emotion >= emotions.length) {
+    emotion = 0;
+  }
+
+  laia.className =
+    "face " + emotions[emotion];
+
+});
+
+
+/* RANDOM BLINKING */
+
+function blink() {
+
+  if (!laia.classList.contains("blink")) {
+
+    laia.classList.add("blink");
+
+    setTimeout(() => {
+      laia.classList.remove("blink");
+    }, 150);
+
+  }
+
+}
+
+setInterval(() => {
+
+  if (Math.random() > 0.55) {
+    blink();
+  }
+
+}, 1800);
+
+
+/* EYES FOLLOW TOUCH / CURSOR */
+
+document.addEventListener("pointermove", event => {
+
+  const x =
+    (event.clientX / window.innerWidth - 0.5) * 15;
+
+  const y =
+    (event.clientY / window.innerHeight - 0.5) * 10;
+
+  pupils.forEach(pupil => {
+
+    pupil.style.transform =
+      `translate(${x}px, ${y}px)`;
+
+  });
+
+});
+
+</script>
+
+</body>
+</html>
