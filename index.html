@@ -11,7 +11,7 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body><div class="authgate" id="authgate"><div class="authbox"><h1>LAIA</h1><p>Privater Zugang. Beim ersten Mal bekommst du einen sicheren Magic Link.</p><input id="authEmail" type="email" autocomplete="email" placeholder="E-Mail"><button id="authButton" type="button">MAGIC LINK SENDEN</button><div class="authmsg" id="authmsg"></div></div></div><main>
+<body><div class="authgate" id="authgate"><div class="authbox"><h1>LAIA</h1><p>Privater Zugang. LAIA schickt dir einen einmaligen Code.</p><input id="authEmail" type="email" autocomplete="email" placeholder="E-Mail"><button id="authButton" type="button">CODE SENDEN</button><input id="authCode" class="hidden" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Code aus der Mail"><button id="verifyButton" class="hidden" type="button">CODE BESTÄTIGEN</button><div class="authmsg" id="authmsg"></div></div></div><main>
 <div class="name">LAIA</div>
 <div class="face" id="laia"><div class="brow left"></div><div class="brow right"></div><div class="eye left"><div class="pupil"></div></div><div class="eye right"><div class="pupil"></div></div><div class="mouth"></div></div>
 <section class="chat"><div class="messages" id="messages"><div class="msg laia">Hey :) Ich bin Laia. Schreib mir was.</div></div><div class="status" id="status">VOICE ON</div><form class="composer" id="form"><button class="voice" id="voice" type="button" aria-label="voice">◉</button><input id="input" autocomplete="off" placeholder="Schreib Laia…" aria-label="Nachricht"><button type="submit" aria-label="send">↑</button></form></section>
@@ -23,10 +23,12 @@ const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const authgate=document.querySelector("#authgate"),authEmail=document.querySelector("#authEmail"),authButton=document.querySelector("#authButton"),authmsg=document.querySelector("#authmsg");
+const authgate=document.querySelector("#authgate"),authEmail=document.querySelector("#authEmail"),authButton=document.querySelector("#authButton"),authCode=document.querySelector("#authCode"),verifyButton=document.querySelector("#verifyButton"),authmsg=document.querySelector("#authmsg");\nconst OWNER_EMAIL="gaba.inclouds@icloud.com";
 const sessionId=crypto.randomUUID?.()||String(Date.now());
 async function refreshGate(){const {data:{session}}=await sb.auth.getSession();authgate.classList.toggle("hidden",!!session);return session}
-authButton.addEventListener("click",async()=>{const email=authEmail.value.trim();if(!email)return;authButton.disabled=true;authmsg.textContent="Einen Moment…";const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:"https://gabanan0.github.io/Laia/"}});authmsg.textContent=error?"Login konnte nicht gesendet werden.":"Check deine Mail ♡";authButton.disabled=false});
+authEmail.value=OWNER_EMAIL;
+authButton.addEventListener("click",async()=>{const email=authEmail.value.trim().toLowerCase();if(email!==OWNER_EMAIL){authmsg.textContent="Dieser Zugang ist privat.";return}authButton.disabled=true;authmsg.textContent="Code wird gesendet…";const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}});if(error){authmsg.textContent=error.status===429?"Zu viele Versuche. Bitte kurz warten.":"Code konnte nicht gesendet werden."}else{authmsg.textContent="Code aus der Mail hier eingeben.";authCode.classList.remove("hidden");verifyButton.classList.remove("hidden")}authButton.disabled=false});
+verifyButton.addEventListener("click",async()=>{const token=authCode.value.trim();if(!token)return;verifyButton.disabled=true;authmsg.textContent="Code wird geprüft…";const {data,error}=await sb.auth.verifyOtp({email:OWNER_EMAIL,token,type:"email"});if(error||!data.session){authmsg.textContent="Code ungültig oder abgelaufen."}else{authmsg.textContent="Willkommen ♡";await refreshGate()}verifyButton.disabled=false});
 sb.auth.onAuthStateChange(()=>setTimeout(refreshGate,0));refreshGate();
 function setMood(m){laia.className="face"+(m?" "+m:"")}
 function blink(){if(!laia.classList.contains("talking")){laia.classList.add("blink");setTimeout(()=>laia.classList.remove("blink"),150)}}
