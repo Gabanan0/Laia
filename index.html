@@ -19,6 +19,9 @@
 <script>
 const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),voiceBtn=document.querySelector("#voice"),statusEl=document.querySelector("#status");
 let voiceOn=true;
+let laiaVoiceId='';
+let currentAudio=null;
+try{laiaVoiceId=localStorage.getItem('laiaVoiceId')||''}catch{}
 const conversation=[];
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
