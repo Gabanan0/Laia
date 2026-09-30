@@ -40,7 +40,8 @@ async function brainReply(raw){
 const session=await refreshGate();if(!session)throw new Error("Login required");
 const res=await fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({message:raw,sessionId})});
 if(!res.ok)throw new Error("Brain unavailable");
-const data=await res.json();return data.reply||null}\nfunction localReply(raw){const t=raw.toLowerCase();let r,m="happy";
+const data=await res.json();return data.reply||null}
+function localReply(raw){const t=raw.toLowerCase();let r,m="happy";
 if(/hallo|hey|hoi|hi\b/.test(t))r="Hii :) Da bist du ja. Was geht dir gerade durch den Kopf?";
 else if(/wie geht/.test(t))r="Jetzt gerade? Ziemlich gut. Ich mag, dass du mit mir redest. Und dir?";
 else if(/wer bist|was bist/.test(t))r="Ich bin Laia. Noch ziemlich klein, aber ich bekomme langsam Augen, Stimme und Persönlichkeit.";
