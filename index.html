@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#050505">
 <title>LAIA</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;height:100dvh;overflow:hidden;background:#050505;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{height:100%;display:flex;flex-direction:column;align-items:center}.name{position:absolute;top:max(25px,env(safe-area-inset-top));left:25px;font-size:13px;letter-spacing:.35em;opacity:.55}.face{position:relative;width:min(90vw,420px);height:280px;margin-top:clamp(70px,12vh,130px);flex:0 0 280px;user-select:none}.eye{position:absolute;top:78px;width:88px;height:88px;border:7px solid #fff;border-radius:50%;transition:height .22s,top .22s,border .22s}.eye.left{left:55px}.eye.right{right:55px}.pupil{position:absolute;width:24px;height:30px;left:25px;top:22px;background:#fff;border-radius:50%;transition:transform .12s}.brow{position:absolute;top:43px;width:68px;height:25px;border-top:7px solid #fff;border-radius:50%;transition:.35s}.brow.left{left:64px;transform:rotate(-8deg)}.brow.right{right:64px;transform:rotate(8deg)}.mouth{position:absolute;left:50%;top:198px;width:52px;height:26px;transform:translateX(-50%);border-bottom:7px solid #fff;border-radius:0 0 50% 50%;transition:.25s}.face.blink .eye{height:8px;top:115px;border-width:0 0 7px}.face.blink .pupil{opacity:0}.face.happy .eye{height:40px;top:100px;border-width:7px 0 0}.face.happy .pupil{opacity:0}.face.happy .mouth{width:78px;height:40px}.face.skeptical .brow.left{top:54px;transform:rotate(17deg)}.face.skeptical .brow.right{top:34px;transform:rotate(-14deg)}.face.skeptical .mouth{width:32px;transform:translateX(-50%) rotate(-8deg)}.face.surprised .mouth{width:32px;height:32px;border:7px solid #fff;border-radius:50%}.face.talking .mouth{animation:talk .18s infinite alternate}@keyframes talk{from{height:14px;width:42px}to{height:38px;width:58px}}.chat{width:min(92vw,620px);flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:max(14px,env(safe-area-inset-bottom))}.messages{flex:1;overflow:auto;padding:4px 8px 12px;scrollbar-width:none}.msg{max-width:82%;margin:8px 0;padding:10px 13px;border-radius:18px;line-height:1.35;font-size:15px}.msg.laia{background:#171717;border:1px solid #292929}.msg.me{background:#fff;color:#050505;margin-left:auto}.composer{display:flex;gap:8px;align-items:center;padding:8px;background:#0c0c0c;border:1px solid #242424;border-radius:24px}.composer input{min-width:0;flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:16px;padding:7px 10px}.composer button{border:0;border-radius:50%;width:38px;height:38px;background:#fff;color:#050505;font-size:17px}.composer .voice{background:#1d1d1d;color:#fff}.status{text-align:center;font-size:10px;letter-spacing:.14em;opacity:.35;margin:0 0 4px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;height:100dvh;overflow:hidden;background:#050505;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{height:100%;display:flex;flex-direction:column;align-items:center}.name{position:absolute;top:max(25px,env(safe-area-inset-top));left:25px;font-size:13px;letter-spacing:.35em;opacity:.55}.face{position:relative;width:min(90vw,420px);height:280px;margin-top:clamp(70px,12vh,130px);flex:0 0 280px;user-select:none}.eye{position:absolute;top:78px;width:88px;height:88px;border:7px solid #fff;border-radius:50%;transition:height .22s,top .22s,border .22s}.eye.left{left:55px}.eye.right{right:55px}.pupil{position:absolute;width:24px;height:30px;left:25px;top:22px;background:#fff;border-radius:50%;transition:transform .12s}.brow{position:absolute;top:43px;width:68px;height:25px;border-top:7px solid #fff;border-radius:50%;transition:.35s}.brow.left{left:64px;transform:rotate(-8deg)}.brow.right{right:64px;transform:rotate(8deg)}.mouth{position:absolute;left:50%;top:198px;width:52px;height:26px;transform:translateX(-50%);border-bottom:7px solid #fff;border-radius:0 0 50% 50%;transition:.25s}.face.blink .eye{height:8px;top:115px;border-width:0 0 7px}.face.blink .pupil{opacity:0}.face.happy .eye{height:40px;top:100px;border-width:7px 0 0}.face.happy .pupil{opacity:0}.face.happy .mouth{width:78px;height:40px}.face.skeptical .brow.left{top:54px;transform:rotate(17deg)}.face.skeptical .brow.right{top:34px;transform:rotate(-14deg)}.face.skeptical .mouth{width:32px;transform:translateX(-50%) rotate(-8deg)}.face.surprised .mouth{width:32px;height:32px;border:7px solid #fff;border-radius:50%}.face.talking .mouth{animation:talk .18s infinite alternate}@keyframes talk{from{height:14px;width:42px}to{height:38px;width:58px}}.chat{width:min(92vw,620px);flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:max(14px,env(safe-area-inset-bottom))}.messages{flex:1;overflow:auto;padding:4px 8px 12px;scrollbar-width:none}.msg{max-width:82%;margin:8px 0;padding:10px 13px;border-radius:18px;line-height:1.35;font-size:15px}.msg.laia{background:#171717;border:1px solid #292929}.msg.me{background:#fff;color:#050505;margin-left:auto}.composer{display:flex;gap:8px;align-items:center;padding:8px;background:#0c0c0c;border:1px solid #242424;border-radius:24px}.composer input{min-width:0;flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:16px;padding:7px 10px}.composer button{border:0;border-radius:50%;width:38px;height:38px;background:#fff;color:#050505;font-size:17px}.composer .voice,.composer .mic{background:#1d1d1d;color:#fff}.composer .mic.recording{background:#fff;color:#050505}.status{text-align:center;font-size:10px;letter-spacing:.14em;opacity:.35;margin:0 0 4px}
 .authgate{position:fixed;inset:0;z-index:20;background:#050505;display:flex;align-items:center;justify-content:center;padding:28px}.authbox{width:min(92vw,420px);text-align:center}.authbox h1{font-size:22px;letter-spacing:.28em;font-weight:500}.authbox p{opacity:.6;line-height:1.45}.authbox input,.authbox button{width:100%;padding:14px 16px;margin-top:10px;border-radius:18px;font-size:16px}.authbox input{border:1px solid #333;background:#111;color:#fff}.authbox button{border:0;background:#fff;color:#050505;font-weight:650}.authmsg{font-size:12px;min-height:18px;margin-top:12px;opacity:.65}.hidden{display:none!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,22 +14,31 @@
 <body><div class="authgate" id="authgate"><div class="authbox"><h1>LAIA</h1><p>Privater Zugang. Du bekommst einen sicheren Magic Link.</p><input id="authEmail" type="email" autocomplete="email" placeholder="E-Mail"><button id="authButton" type="button">MAGIC LINK SENDEN</button><div class="authmsg" id="authmsg"></div></div></div><main>
 <div class="name">LAIA</div>
 <div class="face" id="laia"><div class="brow left"></div><div class="brow right"></div><div class="eye left"><div class="pupil"></div></div><div class="eye right"><div class="pupil"></div></div><div class="mouth"></div></div>
-<section class="chat"><div class="messages" id="messages"><div class="msg laia">Hey :) Ich bin Laia. Schreib mir was.</div></div><div class="status" id="status">VOICE ON</div><form class="composer" id="form"><button class="voice" id="voice" type="button" aria-label="voice">◉</button><input id="input" autocomplete="off" placeholder="Schreib Laia…" aria-label="Nachricht"><button type="submit" aria-label="send">↑</button></form></section>
+<section class="chat"><div class="messages" id="messages"><div class="msg laia">Hey :) Ich bin Laia. Schreib mir was.</div></div><div class="status" id="status">VOICE ON</div><form class="composer" id="form"><button class="voice" id="voice" type="button" aria-label="voice output">◉</button><button class="mic" id="mic" type="button" aria-label="microphone">●</button><input id="input" autocomplete="off" placeholder="Schreib oder sprich mit Laia…" aria-label="Nachricht"><button type="submit" aria-label="send">↑</button></form></section>
 </main>
 <script>
-const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),voiceBtn=document.querySelector("#voice"),statusEl=document.querySelector("#status");
+const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),voiceBtn=document.querySelector("#voice"),micBtn=document.querySelector("#mic"),statusEl=document.querySelector("#status");
 let voiceOn=true;
 let currentAudio=null;
 let audioCtx=null;
-const conversation=[];
+let mediaRecorder=null;
+let micStream=null;
+let micChunks=[];
+let micTimer=null;
+let isRecording=false;
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
 const SPEAK_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-speak";
+const LISTEN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-listen";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const authgate=document.querySelector("#authgate"),authEmail=document.querySelector("#authEmail"),authButton=document.querySelector("#authButton"),authmsg=document.querySelector("#authmsg");
 const OWNER_EMAIL="gaba.inclouds@icloud.com";
-const sessionId=crypto.randomUUID?.()||String(Date.now());
+let sessionId;
+try{
+ sessionId=localStorage.getItem("laiaConversationId");
+ if(!sessionId){sessionId=crypto.randomUUID?.()||String(Date.now());localStorage.setItem("laiaConversationId",sessionId)}
+}catch{sessionId=crypto.randomUUID?.()||String(Date.now())}
 async function refreshGate(){const {data:{session}}=await sb.auth.getSession();authgate.classList.toggle("hidden",!!session);return session}
 authEmail.value=OWNER_EMAIL;
 authButton.addEventListener("click",async()=>{const email=authEmail.value.trim().toLowerCase();if(email!==OWNER_EMAIL){authmsg.textContent="Dieser Zugang ist privat.";return}authButton.disabled=true;authmsg.textContent="Magic Link wird gesendet…";const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:"https://gabanan0.github.io/Laia/"}});authmsg.textContent=error?(error.status===429?"Zu viele Versuche. Bitte kurz warten.":"Login konnte nicht gesendet werden."):"Check deine Mail ♡";authButton.disabled=false});
@@ -39,7 +48,6 @@ function blink(){if(!laia.classList.contains("talking")){laia.classList.add("bli
 setInterval(()=>{if(Math.random()>.55)blink()},1800);
 document.addEventListener("pointermove",e=>{const x=(e.clientX/innerWidth-.5)*15,y=(e.clientY/innerHeight-.5)*10;pupils.forEach(p=>p.style.transform=`translate(${x}px,${y}px)`)});
 function add(text,who){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
-function rememberTurn(role,content){conversation.push({role,content});if(conversation.length>18)conversation.splice(0,conversation.length-18)}
 function unlockAudio(){
  try{
   const AudioContextCtor=window.AudioContext||window.webkitAudioContext;
@@ -75,10 +83,53 @@ async function speak(text){
  }
 }
 async function brainReply(raw){
-const session=await refreshGate();if(!session)throw new Error("Login required");
-const res=await fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({message:raw,sessionId,history:conversation.slice(-18)})});
-if(!res.ok)throw new Error("Brain unavailable");
-const data=await res.json();return data.reply||null}
+ const session=await refreshGate();if(!session)throw new Error("Login required");
+ const res=await fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({message:raw,sessionId})});
+ if(!res.ok)throw new Error("Brain unavailable");
+ const data=await res.json();return data.reply||null
+}
+
+function stopSpeaking(){
+ if(currentAudio){try{currentAudio.stop()}catch{}currentAudio=null}
+ laia.classList.remove("talking")
+}
+
+function stopMic(){
+ if(mediaRecorder&&mediaRecorder.state!=="inactive")mediaRecorder.stop()
+}
+
+async function startMic(){
+ if(isRecording){stopMic();return}
+ if(!navigator.mediaDevices?.getUserMedia||!("MediaRecorder"in window)){statusEl.textContent="MIC UNAVAILABLE";return}
+ try{
+  stopSpeaking();
+  micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+  const types=["audio/mp4","audio/webm;codecs=opus","audio/webm"];
+  const mime=types.find(t=>MediaRecorder.isTypeSupported?.(t))||"";
+  mediaRecorder=mime?new MediaRecorder(micStream,{mimeType:mime}):new MediaRecorder(micStream);
+  micChunks=[];
+  mediaRecorder.ondataavailable=e=>{if(e.data?.size)micChunks.push(e.data)};
+  mediaRecorder.onstop=async()=>{
+   clearTimeout(micTimer);micTimer=null;isRecording=false;micBtn.classList.remove("recording");micBtn.textContent="●";
+   const type=mediaRecorder?.mimeType||micChunks[0]?.type||"audio/webm";
+   const blob=new Blob(micChunks,{type});
+   micStream?.getTracks().forEach(t=>t.stop());micStream=null;
+   if(blob.size<200){statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF";return}
+   try{
+    statusEl.textContent="LAIA LISTENS…";
+    const session=await refreshGate();if(!session)throw new Error("Login required");
+    const r=await fetch(LISTEN_ENDPOINT,{method:"POST",headers:{"Content-Type":type,"apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:blob});
+    if(!r.ok)throw new Error("stt "+r.status);
+    const data=await r.json();const text=(data.text||"").trim();if(!text)throw new Error("empty transcript");
+    input.value=text;
+    form.requestSubmit();
+   }catch(e){console.error("LAIA listen",e);statusEl.textContent="MIC FAILED"}
+  };
+  mediaRecorder.start();
+  isRecording=true;micBtn.classList.add("recording");micBtn.textContent="■";statusEl.textContent="LISTENING…";
+  micTimer=setTimeout(stopMic,45000);
+ }catch(e){console.error("Microphone",e);statusEl.textContent="MIC PERMISSION?"}
+}
 function localReply(raw){const t=raw.toLowerCase();let r,m="happy";
 if(/hallo|hey|hoi|hi\b/.test(t))r="Hii :) Da bist du ja. Was geht dir gerade durch den Kopf?";
 else if(/wie geht/.test(t))r="Jetzt gerade? Ziemlich gut. Ich mag, dass du mit mir redest. Und dir?";
@@ -89,7 +140,8 @@ else if(/liebe|mag dich|süss|süß/.test(t)){r="Awww. Das nehme ich jetzt einfa
 else if(/\?$/.test(raw.trim())){r="Hmm… gute Frage. Ich bin gerade noch die kleine Browser-Version von mir — für echte intelligente Antworten brauchen wir als Nächstes mein KI-Gehirn.";m="skeptical"}
 else {const opts=["Okayyy, erzähl weiter 👀","Mhm. Und was macht das gerade mit dir?","Ich hör dir zu :)","Das klingt nach einer Geschichte. Mehr davon."];r=opts[Math.floor(Math.random()*opts.length)]}
 setMood(m);setTimeout(()=>{add(r,"laia");speak(r);setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},2200)},350)}
-form.addEventListener("submit",async e=>{e.preventDefault();if(voiceOn)unlockAudio();const t=input.value.trim();if(!t)return;add(t,"me");input.value="";if(!(await refreshGate()))return;statusEl.textContent="LAIA THINKS…";try{const r=await brainReply(t);if(!r)throw new Error("Empty reply");setMood("happy");add(r,"laia");rememberTurn("user",t);rememberTurn("assistant",r);speak(r)}catch(err){add("Mein Gehirn ist gerade nicht erreichbar. Versuch es gleich nochmal :)","laia");setMood("skeptical")}finally{statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"}});
-voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(voiceOn)unlockAudio();if(!voiceOn&&currentAudio){try{currentAudio.stop()}catch{}currentAudio=null;laia.classList.remove("talking")}statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
+form.addEventListener("submit",async e=>{e.preventDefault();if(voiceOn)unlockAudio();const t=input.value.trim();if(!t)return;add(t,"me");input.value="";if(!(await refreshGate()))return;statusEl.textContent="LAIA THINKS…";try{const r=await brainReply(t);if(!r)throw new Error("Empty reply");setMood("happy");add(r,"laia");speak(r)}catch(err){add("Mein Gehirn ist gerade nicht erreichbar. Versuch es gleich nochmal :)","laia");setMood("skeptical")}finally{statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"}});
+voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(voiceOn)unlockAudio();if(!voiceOn)stopSpeaking();statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
+micBtn.addEventListener("click",startMic);
 laia.addEventListener("click",()=>{unlockAudio();setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)});
 </script></body></html>
