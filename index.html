@@ -18,7 +18,8 @@
 </main>
 <script>
 const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),voiceBtn=document.querySelector("#voice"),statusEl=document.querySelector("#status");
-let voiceOn=true;\nconst conversation=[];
+let voiceOn=true;
+const conversation=[];
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
@@ -34,7 +35,8 @@ function setMood(m){laia.className="face"+(m?" "+m:"")}
 function blink(){if(!laia.classList.contains("talking")){laia.classList.add("blink");setTimeout(()=>laia.classList.remove("blink"),150)}}
 setInterval(()=>{if(Math.random()>.55)blink()},1800);
 document.addEventListener("pointermove",e=>{const x=(e.clientX/innerWidth-.5)*15,y=(e.clientY/innerHeight-.5)*10;pupils.forEach(p=>p.style.transform=`translate(${x}px,${y}px)`)});
-function add(text,who){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}\nfunction rememberTurn(role,content){conversation.push({role,content});if(conversation.length>18)conversation.splice(0,conversation.length-18)}
+function add(text,who){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
+function rememberTurn(role,content){conversation.push({role,content});if(conversation.length>18)conversation.splice(0,conversation.length-18)}
 function chooseVoice(){const vs=speechSynthesis.getVoices();return vs.find(v=>/de-CH/i.test(v.lang))||vs.find(v=>/de-DE/i.test(v.lang)&&/female|anna|petra|katja/i.test(v.name))||vs.find(v=>/^de/i.test(v.lang))||vs[0]}
 function speak(text){if(!voiceOn||!("speechSynthesis"in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=chooseVoice();if(v)u.voice=v;u.lang=v?.lang||"de-CH";u.rate=1.04;u.pitch=1.12;u.onstart=()=>laia.classList.add("talking");u.onend=()=>laia.classList.remove("talking");speechSynthesis.speak(u)}
 speechSynthesis?.getVoices();
