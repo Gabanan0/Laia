@@ -152,7 +152,7 @@ class MainActivity : Activity() {
         if (nativeRecorder != null) return false
         return try {
             nativeRecordingMode = if (mode == "music") "music" else "voice"
-            val file = File(cacheDir, "laia_$nativeRecordingMode_${System.currentTimeMillis()}.m4a")
+            val file = File(cacheDir, "laia_${nativeRecordingMode}_${System.currentTimeMillis()}.m4a")
             nativeRecordingFile = file
             nativeRecorder = MediaRecorder().apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
