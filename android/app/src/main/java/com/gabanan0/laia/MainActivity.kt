@@ -35,6 +35,11 @@ class MainActivity : Activity() {
     private var nativeRecorder: MediaRecorder? = null
     private var nativeRecordingFile: File? = null
     private var nativeRecordingMode: String = "voice"
+    private val vadHandler = Handler(Looper.getMainLooper())
+    private var vadStartedAt = 0L
+    private var vadLastVoiceAt = 0L
+    private var vadHeardVoice = false
+    private var vadNoiseFloor = 180.0
 
     private var wakeRecognizer: SpeechRecognizer? = null
     private var wakeEnabled = true
@@ -45,7 +50,7 @@ class MainActivity : Activity() {
     private var pendingTorchState: Boolean? = null
 
     private val laiaUrl = "https://gabanan0.github.io/Laia/"
-    private val appVersion = "0.4.0"
+    private val appVersion = "0.5.0"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -148,38 +153,48 @@ class MainActivity : Activity() {
                     margin-top:clamp(78px,10vh,118px)!important;
                     border-radius:50%!important;
                     position:relative!important;
-                    overflow:hidden!important;
-                    background:#09113b!important;
+                    overflow:visible!important;
+                    background:transparent!important;
                   }
                   .native-app .face .brow,.native-app .face .eye,.native-app .face .mouth{display:none!important}
                   #laiaNativePortrait{
                     position:absolute;inset:0;width:100%;height:100%;
-                    object-fit:cover;border-radius:50%;image-rendering:auto;
-                    transform:none!important;filter:none;
+                    object-fit:cover;border-radius:50%;
+                    image-rendering:auto;
+                    transform:none!important;filter:none!important;
+                    box-shadow:none!important;
                   }
-                  #laiaNativeMouth{
-                    position:absolute;left:43%;top:69.2%;width:14%;height:3px;
-                    background:#ffe11a;z-index:4;
-                    box-shadow:0 4px 0 #ff5311;
-                    transform-origin:center;
-                    opacity:.96;
+                  #laiaNativeState{
+                    position:absolute;inset:-9px;z-index:5;pointer-events:none;
                   }
-                  #laiaNativeBlink{position:absolute;inset:0;z-index:5;pointer-events:none}
-                  #laiaNativeBlink:before,#laiaNativeBlink:after{
-                    content:'';position:absolute;top:49.2%;width:18%;height:0;
-                    background:#09113b;opacity:0;transition:height .07s ease,opacity .04s;
+                  #laiaNativeState i{
+                    position:absolute;left:50%;top:50%;
+                    width:5px;height:5px;margin:-2.5px;
+                    background:#ffe11a;opacity:0;
+                    transform:rotate(calc(var(--i) * 30deg)) translateY(calc(-1 * (min(37vw,165px) + 5px)));
+                    transform-origin:2.5px 2.5px;
                   }
-                  #laiaNativeBlink:before{left:24.5%}
-                  #laiaNativeBlink:after{right:24.5%}
-                  .face.blink #laiaNativeBlink:before,.face.blink #laiaNativeBlink:after{height:10%;opacity:.98}
-                  .face.talking #laiaNativeMouth{animation:laiaMouth .13s steps(2,end) infinite alternate}
-                  .face.happy #laiaNativeMouth{width:18%;left:41%;transform:translateY(1px)}
-                  .face.skeptical #laiaNativeMouth{width:10%;left:45%;transform:rotate(-5deg)}
-                  .face.surprised #laiaNativeMouth{width:7%;height:7%;left:46.5%;top:67%;border-radius:50%;box-shadow:none;background:#ff5a13}
-                  @keyframes laiaMouth{
-                    from{height:3px;transform:scaleX(.88) scaleY(1)}
-                    to{height:8px;transform:scaleX(1.06) scaleY(1.35)}
+                  .face.listening #laiaNativeState i{
+                    animation:laiaListen 1.2s steps(2,end) infinite;
+                    animation-delay:calc(var(--i) * -0.08s);
                   }
+                  .face.thinking #laiaNativeState i{
+                    animation:laiaThink 1.05s steps(1,end) infinite;
+                    animation-delay:calc(var(--i) * -0.085s);
+                  }
+                  .face.talking #laiaNativeState i:nth-child(5),
+                  .face.talking #laiaNativeState i:nth-child(6),
+                  .face.talking #laiaNativeState i:nth-child(7),
+                  .face.talking #laiaNativeState i:nth-child(8){
+                    animation:laiaTalk .46s steps(2,end) infinite alternate;
+                    animation-delay:calc(var(--i) * -0.045s);
+                  }
+                  .face.happy #laiaNativeState i:nth-child(2),
+                  .face.happy #laiaNativeState i:nth-child(11){opacity:.52}
+                  .face.skeptical #laiaNativeState i:nth-child(9){opacity:.5;background:#ff5712}
+                  @keyframes laiaListen{0%,100%{opacity:.10}50%{opacity:.72}}
+                  @keyframes laiaThink{0%,82%,100%{opacity:.08}84%,96%{opacity:.72}}
+                  @keyframes laiaTalk{from{opacity:.16}to{opacity:.86}}
                 `;
                 document.head.appendChild(style);
               }
@@ -189,13 +204,17 @@ class MainActivity : Activity() {
               img.id = 'laiaNativePortrait';
               img.alt = 'LAIA';
               img.src = '""" + faceData + """';
-              const mouth = document.createElement('div');
-              mouth.id = 'laiaNativeMouth';
-              const blink = document.createElement('div');
-              blink.id = 'laiaNativeBlink';
+
+              const state = document.createElement('div');
+              state.id = 'laiaNativeState';
+              for (let i=0;i<12;i++) {
+                const dot=document.createElement('i');
+                dot.style.setProperty('--i', String(i));
+                state.appendChild(dot);
+              }
+
               face.appendChild(img);
-              face.appendChild(mouth);
-              face.appendChild(blink);
+              face.appendChild(state);
             })();
         """.trimIndent()
         webView.evaluateJavascript(js, null)
@@ -224,8 +243,11 @@ class MainActivity : Activity() {
                 prepare()
                 start()
             }
+
+            if (nativeRecordingMode == "voice") startVadMonitor()
             true
         } catch (e: Exception) {
+            vadHandler.removeCallbacksAndMessages(null)
             nativeRecorder?.release()
             nativeRecorder = null
             nativeRecordingFile?.delete()
@@ -238,31 +260,97 @@ class MainActivity : Activity() {
         }
     }
 
-    fun stopNativeRecording(): Boolean {
+    private fun startVadMonitor() {
+        vadHandler.removeCallbacksAndMessages(null)
+        vadStartedAt = System.currentTimeMillis()
+        vadLastVoiceAt = vadStartedAt
+        vadHeardVoice = false
+        vadNoiseFloor = 180.0
+
+        val monitor = object : Runnable {
+            override fun run() {
+                val recorder = nativeRecorder ?: return
+                if (nativeRecordingMode != "voice") return
+
+                val now = System.currentTimeMillis()
+                val elapsed = now - vadStartedAt
+                val amplitude = try { recorder.maxAmplitude.toDouble() } catch (_: Exception) { 0.0 }
+
+                if (!vadHeardVoice && elapsed > 250L) {
+                    vadNoiseFloor = (vadNoiseFloor * 0.88) + (amplitude * 0.12)
+                }
+
+                val threshold = maxOf(1200.0, vadNoiseFloor * 3.2)
+                if (amplitude > threshold) {
+                    vadHeardVoice = true
+                    vadLastVoiceAt = now
+                }
+
+                when {
+                    vadHeardVoice && now - vadLastVoiceAt >= 850L && elapsed >= 650L ->
+                        finishNativeRecording(sendAudio = true)
+                    !vadHeardVoice && elapsed >= 4500L ->
+                        finishNativeRecording(sendAudio = false)
+                    elapsed >= 18000L ->
+                        finishNativeRecording(sendAudio = vadHeardVoice)
+                    else ->
+                        vadHandler.postDelayed(this, 110L)
+                }
+            }
+        }
+
+        vadHandler.postDelayed(monitor, 180L)
+    }
+
+    fun stopNativeRecording(): Boolean = finishNativeRecording(sendAudio = true)
+
+    private fun finishNativeRecording(sendAudio: Boolean): Boolean {
         val recorder = nativeRecorder ?: return false
         nativeRecorder = null
+        vadHandler.removeCallbacksAndMessages(null)
+
         return try {
             recorder.stop()
             recorder.release()
-            val file = nativeRecordingFile ?: return false
+
+            val file = nativeRecordingFile
             nativeRecordingFile = null
+
+            if (!sendAudio || file == null || !file.exists() || file.length() < 256L) {
+                file?.delete()
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.nativeVoiceTimeout && window.nativeVoiceTimeout()",
+                        null
+                    )
+                }
+                resumeWakeWord(650)
+                return true
+            }
+
             val bytes = file.readBytes()
             file.delete()
             val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
             val mode = nativeRecordingMode
+
             runOnUiThread {
                 webView.evaluateJavascript(
                     "window.receiveNativeRecording && window.receiveNativeRecording('$base64','audio/mp4','$mode')",
                     null
                 )
             }
-            resumeWakeWord(1400)
             true
         } catch (e: Exception) {
             try { recorder.release() } catch (_: Exception) {}
             nativeRecordingFile?.delete()
             nativeRecordingFile = null
-            resumeWakeWord(900)
+            runOnUiThread {
+                webView.evaluateJavascript(
+                    "window.nativeVoiceTimeout && window.nativeVoiceTimeout()",
+                    null
+                )
+            }
+            resumeWakeWord(700)
             false
         }
     }
@@ -413,6 +501,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        vadHandler.removeCallbacksAndMessages(null)
         pauseWakeWord()
         try { wakeRecognizer?.destroy() } catch (_: Exception) {}
         wakeRecognizer = null
