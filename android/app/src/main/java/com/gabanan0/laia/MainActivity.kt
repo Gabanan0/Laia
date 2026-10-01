@@ -60,6 +60,10 @@ class MainActivity : Activity() {
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
+                if (uri.scheme == "laia" && uri.host == "auth") {
+                    view.loadUrl(resolveIntentUrl(Intent(Intent.ACTION_VIEW, uri)) ?: laiaUrl)
+                    return true
+                }
                 return if (uri.scheme == "https" && uri.host == "gabanan0.github.io") {
                     false
                 } else {
@@ -69,10 +73,18 @@ class MainActivity : Activity() {
             }
         }
 
-        val startUrl = intent?.data?.toString()?.takeIf {
-            it.startsWith("https://gabanan0.github.io/Laia/")
-        } ?: laiaUrl
-        webView.loadUrl(startUrl)
+        webView.loadUrl(resolveIntentUrl(intent) ?: laiaUrl)
+    }
+
+    private fun resolveIntentUrl(intent: Intent?): String? {
+        val uri = intent?.data ?: return null
+        if (uri.scheme == "laia" && uri.host == "auth") {
+            val query = uri.encodedQuery?.let { "?$it" } ?: ""
+            val fragment = uri.encodedFragment?.let { "#$it" } ?: ""
+            return laiaUrl + query + fragment
+        }
+        val raw = uri.toString()
+        return raw.takeIf { it.startsWith(laiaUrl) }
     }
 
     private fun injectLaiaFace() {
@@ -109,9 +121,7 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.data?.toString()?.takeIf {
-            it.startsWith("https://gabanan0.github.io/Laia/")
-        }?.let(webView::loadUrl)
+        resolveIntentUrl(intent)?.let(webView::loadUrl)
     }
 
     @Deprecated("Deprecated in Java")
