@@ -68,6 +68,7 @@ let conversationMode=false;
 let followupTimer=null;
 let lastActionSignature="";
 let lastActionAt=0;
+let preferNativeTts=false;
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
@@ -135,13 +136,33 @@ function unlockAudio(){
 }
 async function speak(text){
  if(!voiceOn)return;
+
+ const useNative=()=>{
+  try{
+   if(window.AndroidBridge?.speakNative&&window.AndroidBridge.speakNative(text)){
+    setVisualState("talking");
+    statusEl.textContent="LAIA SPEAKS…";
+    return true
+   }
+  }catch(e){console.error("Native TTS",e)}
+  return false
+ };
+
+ if(preferNativeTts&&useNative())return;
+
  try{
   const session=await refreshGate();
   if(!session)throw new Error("Login required");
   statusEl.textContent="LAIA SPEAKS…";
   try{window.AndroidBridge?.pauseWakeWord?.()}catch{}
   const r=await fetch(SPEAK_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({text})});
-  if(!r.ok)throw new Error("tts "+r.status);
+  if(!r.ok){
+   if(window.AndroidBridge?.speakNative){
+    preferNativeTts=true;
+    if(useNative())return
+   }
+   throw new Error("tts "+r.status)
+  }
   const bytes=await r.arrayBuffer();
   unlockAudio();
   if(!audioCtx)throw new Error("Audio unavailable");
@@ -173,6 +194,25 @@ async function speak(text){
   try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
  }
 }
+
+window.nativeSpeechEnded=()=>{
+ setVisualState("");
+ if(conversationMode&&window.AndroidBridge&&!document.body.classList.contains("text-open")&&document.visibilityState==="visible"){
+  statusEl.textContent="…";
+  clearTimeout(followupTimer);
+  followupTimer=setTimeout(()=>startMic(true),430)
+ }else{
+  statusEl.textContent=idleStatus();
+  try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
+ }
+};
+
+window.nativeSpeechFailed=()=>{
+ setVisualState("");
+ statusEl.textContent=idleStatus();
+ try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
+};
+
 function idleStatus(){return window.AndroidBridge?"HEY LAIA":"VOICE ON"}
 
 async function brainReply(raw){
@@ -272,6 +312,21 @@ async function handleMusicBlob(blob,type){
  else{const album=m.album?" — "+m.album:"";add("♪ "+m.artist+" — "+m.title+album,"laia");if(voiceOn)speak("Das ist "+m.title+" von "+m.artist+".")}
 }
 
+window.nativeSpeechReady=()=>{
+ statusEl.textContent="ICH HÖRE";
+ setVisualState("listening")
+};
+
+window.receiveNativeTranscript=(text)=>{
+ clearTimeout(micTimer);micTimer=null;
+ isRecording=false;micBtn.classList.remove("recording");micBtn.textContent="●";
+ const t=String(text||"").trim();
+ if(!t){window.nativeVoiceTimeout();return}
+ conversationMode=true;
+ setVisualState("thinking");statusEl.textContent="VERSTEHE…";
+ input.value=t;form.requestSubmit()
+};
+
 window.receiveNativeRecording=async(base64,type,mode)=>{
  try{
   const blob=base64ToBlob(base64,type||"audio/mp4");
@@ -304,6 +359,21 @@ function stopMic(){
 }
 
 async function startMic(followup=false){
+ if(window.AndroidBridge?.startSpeechInput){
+  if(isRecording)return;
+  try{
+   clearTimeout(followupTimer);followupTimer=null;
+   if(!followup)conversationMode=true;
+   stopSpeaking();
+   if(!window.AndroidBridge.startSpeechInput())throw new Error("native speech input unavailable");
+   isRecording=true;micBtn.classList.add("recording");micBtn.textContent="■";
+   setVisualState("listening");statusEl.textContent="ICH HÖRE";
+   return
+  }catch(e){
+   console.error("Native speech input",e);
+   setVisualState("");conversationMode=false;statusEl.textContent="MIC FAILED";return
+  }
+ }
  if(window.AndroidBridge?.startRecording){
   if(isRecording){window.AndroidBridge.stopRecording();return}
   try{
