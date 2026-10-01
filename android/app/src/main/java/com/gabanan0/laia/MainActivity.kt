@@ -79,9 +79,11 @@ class MainActivity : Activity() {
     private fun resolveIntentUrl(intent: Intent?): String? {
         val uri = intent?.data ?: return null
         if (uri.scheme == "laia" && uri.host == "auth") {
-            val query = uri.encodedQuery?.let { "?$it" } ?: ""
+            val existingQuery = uri.encodedQuery
+            val separator = if (existingQuery.isNullOrBlank()) "?" else "?$existingQuery&"
+            val reloadNonce = "native_auth=" + System.currentTimeMillis()
             val fragment = uri.encodedFragment?.let { "#$it" } ?: ""
-            return laiaUrl + query + fragment
+            return laiaUrl + separator + reloadNonce + fragment
         }
         val raw = uri.toString()
         return raw.takeIf { it.startsWith(laiaUrl) }
