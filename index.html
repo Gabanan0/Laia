@@ -137,11 +137,59 @@ function stopSpeaking(){
  laia.classList.remove("talking")
 }
 
+function base64ToBlob(base64,type){
+ const bin=atob(base64),bytes=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+ return new Blob([bytes],{type})
+}
+
+async function handleVoiceBlob(blob,type){
+ statusEl.textContent="LAIA LISTENS…";
+ const session=await refreshGate();if(!session)throw new Error("Login required");
+ const r=await fetch(LISTEN_ENDPOINT,{method:"POST",headers:{"Content-Type":type,"apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:blob});
+ if(!r.ok)throw new Error("stt "+r.status);
+ const data=await r.json();const text=(data.text||"").trim();if(!text)throw new Error("empty transcript");
+ input.value=text;form.requestSubmit()
+}
+
+async function handleMusicBlob(blob,type){
+ statusEl.textContent="RECOGNIZING…";
+ const session=await refreshGate();if(!session)throw new Error("Login required");
+ const r=await fetch(MUSIC_ENDPOINT,{method:"POST",headers:{"Content-Type":type,"apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:blob});
+ if(!r.ok)throw new Error("music "+r.status);
+ const data=await r.json(),m=data.match;
+ if(!m){const msg="Hmm. Den Track habe ich nicht erkannt.";add(msg,"laia");if(voiceOn)speak(msg)}
+ else{const album=m.album?" — "+m.album:"";add("♪ "+m.artist+" — "+m.title+album,"laia");if(voiceOn)speak("Das ist "+m.title+" von "+m.artist+".")}
+}
+
+window.receiveNativeRecording=async(base64,type,mode)=>{
+ try{
+  const blob=base64ToBlob(base64,type||"audio/mp4");
+  if(mode==="music"){
+   clearTimeout(musicTimer);musicTimer=null;isMusicListening=false;musicBtn.classList.remove("listening");musicBtn.textContent="♫";
+   await handleMusicBlob(blob,type||"audio/mp4")
+  }else{
+   clearTimeout(micTimer);micTimer=null;isRecording=false;micBtn.classList.remove("recording");micBtn.textContent="●";
+   await handleVoiceBlob(blob,type||"audio/mp4")
+  }
+ }catch(e){console.error("Native recording",e);statusEl.textContent=mode==="music"?"MUSIC FAILED":"MIC FAILED"}
+};
+
 function stopMic(){
  if(mediaRecorder&&mediaRecorder.state!=="inactive")mediaRecorder.stop()
 }
 
 async function startMic(){
+ if(window.AndroidBridge?.startRecording){
+  if(isRecording){window.AndroidBridge.stopRecording();return}
+  try{
+   stopSpeaking();
+   if(!window.AndroidBridge.startRecording("voice"))throw new Error("native mic unavailable");
+   isRecording=true;micBtn.classList.add("recording");micBtn.textContent="■";statusEl.textContent="LISTENING…";
+   micTimer=setTimeout(()=>window.AndroidBridge.stopRecording(),45000);
+   return
+  }catch(e){console.error("Native microphone",e);statusEl.textContent="MIC FAILED";return}
+ }
  if(isRecording){stopMic();return}
  if(!navigator.mediaDevices?.getUserMedia||!("MediaRecorder"in window)){statusEl.textContent="MIC UNAVAILABLE";return}
  try{
@@ -179,6 +227,16 @@ function stopMusic(){
 
 async function recognizeMusic(){
  if(isRecording){statusEl.textContent="STOP MIC FIRST";return}
+ if(window.AndroidBridge?.startRecording){
+  if(isMusicListening){window.AndroidBridge.stopRecording();return}
+  try{
+   stopSpeaking();
+   if(!window.AndroidBridge.startRecording("music"))throw new Error("native music mic unavailable");
+   isMusicListening=true;musicBtn.classList.add("listening");musicBtn.textContent="■";statusEl.textContent="LISTENING FOR MUSIC…";
+   musicTimer=setTimeout(()=>window.AndroidBridge.stopRecording(),12000);
+   return
+  }catch(e){console.error("Native music microphone",e);statusEl.textContent="MUSIC FAILED";return}
+ }
  if(isMusicListening){stopMusic();return}
  if(!navigator.mediaDevices?.getUserMedia||!("MediaRecorder"in window)){statusEl.textContent="MUSIC UNAVAILABLE";return}
  try{
