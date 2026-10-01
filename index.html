@@ -17,6 +17,29 @@
 .face.blink #laiaPixelFace{filter:brightness(.62) contrast(1.1)}
 .face.talking #laiaPixelFace{animation:laiaFacePulse .42s ease-in-out infinite alternate}
 @keyframes laiaFacePulse{from{transform:scale(1)}to{transform:scale(1.018);filter:brightness(1.06)}}
+
+/* Android v0.4: voice-first, crisp, minimal UI */
+.native-app{background:#050505}
+.native-app main{background:#050505}
+.native-app .name{top:max(24px,env(safe-area-inset-top));left:24px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:650;letter-spacing:.52em;opacity:.9}
+.native-app .chat{position:fixed;inset:auto 0 0 0;width:100%;height:auto;min-height:0;flex:none;padding:0 22px calc(18px + env(safe-area-inset-bottom));z-index:12}
+.native-app .status{position:fixed;left:0;right:0;bottom:calc(82px + env(safe-area-inset-bottom));margin:0;text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:650;letter-spacing:.24em;opacity:.52;pointer-events:none}
+.native-app .messages{display:none;position:fixed;left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));max-height:42dvh;overflow:auto;background:#080808;border:1px solid #262626;border-radius:22px;padding:10px 10px 14px;box-shadow:0 14px 50px rgba(0,0,0,.62)}
+.native-app.text-open .messages{display:block}
+.native-app .msg{max-width:86%;font-size:15px;line-height:1.42;border-radius:16px;padding:10px 12px}
+.native-app .msg.laia{background:#111;border:1px solid #222}
+.native-app .msg.me{background:#f2f2f2;color:#090909}
+.native-app .composer{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0;background:transparent;border:0;border-radius:0}
+.native-app .composer .voice,.native-app .composer .mic,.native-app .composer input,.native-app .composer button[type=submit]{display:none}
+.native-app .composer .text-toggle,.native-app .composer .music{display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:#0b0b0b;color:#f4f4f4;border:1px solid #303030;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:17px}
+.native-app .composer .music.listening{background:#f1f1f1;color:#050505}
+.native-app.text-open .status{bottom:calc(78px + env(safe-area-inset-bottom))}
+.native-app.text-open .composer{justify-content:flex-start;gap:7px;padding:5px;background:#0a0a0a;border:1px solid #272727;border-radius:30px}
+.native-app.text-open .composer .text-toggle{width:46px;height:46px;flex:0 0 46px}
+.native-app.text-open .composer input{display:block;min-width:0;flex:1;padding:9px 7px;font-size:16px}
+.native-app.text-open .composer button[type=submit]{display:block;width:46px;height:46px;flex:0 0 46px}
+.native-app.text-open .composer .music{display:none}
+.native-app .face{cursor:pointer}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./android-bridge.js"></script>
@@ -24,10 +47,10 @@
 <body><div class="authgate" id="authgate"><div class="authbox"><h1>LAIA</h1><p>Privater Zugang. Du bekommst einen sicheren Magic Link.</p><input id="authEmail" type="email" autocomplete="email" placeholder="E-Mail"><button id="authButton" type="button">MAGIC LINK SENDEN</button><div class="authmsg" id="authmsg"></div></div></div><main>
 <div class="name">LAIA</div>
 <div class="face" id="laia"><div class="brow left"></div><div class="brow right"></div><div class="eye left"><div class="pupil"></div></div><div class="eye right"><div class="pupil"></div></div><div class="mouth"></div></div>
-<section class="chat"><div class="messages" id="messages"><div class="msg laia">Hey :) Ich bin Laia. Schreib mir was.</div></div><div class="status" id="status">VOICE ON</div><form class="composer" id="form"><button class="voice" id="voice" type="button" aria-label="voice output">◉</button><button class="mic" id="mic" type="button" aria-label="microphone">●</button><button class="music" id="music" type="button" aria-label="recognize music">♫</button><input id="input" autocomplete="off" placeholder="Schreib oder sprich mit Laia…" aria-label="Nachricht"><button type="submit" aria-label="send">↑</button></form></section>
+<section class="chat"><div class="messages" id="messages"><div class="msg laia">Hey. Ich bin da.</div></div><div class="status" id="status">VOICE ON</div><form class="composer" id="form"><button class="text-toggle" id="textToggle" type="button" aria-label="Text öffnen">T</button><button class="voice" id="voice" type="button" aria-label="voice output">◉</button><button class="mic" id="mic" type="button" aria-label="microphone">●</button><button class="music" id="music" type="button" aria-label="Musik erkennen">♫</button><input id="input" autocomplete="off" placeholder="Nachricht an LAIA…" aria-label="Nachricht"><button type="submit" aria-label="send">↑</button></form></section>
 </main>
 <script>
-const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),voiceBtn=document.querySelector("#voice"),micBtn=document.querySelector("#mic"),musicBtn=document.querySelector("#music"),statusEl=document.querySelector("#status");
+const laia=document.querySelector("#laia"),pupils=document.querySelectorAll(".pupil"),messages=document.querySelector("#messages"),input=document.querySelector("#input"),form=document.querySelector("#form"),textToggle=document.querySelector("#textToggle"),voiceBtn=document.querySelector("#voice"),micBtn=document.querySelector("#mic"),musicBtn=document.querySelector("#music"),statusEl=document.querySelector("#status");
 let voiceOn=true;
 let currentAudio=null;
 let audioCtx=null;
@@ -105,6 +128,7 @@ async function speak(text){
   const session=await refreshGate();
   if(!session)throw new Error("Login required");
   statusEl.textContent="LAIA SPEAKS…";
+  try{window.AndroidBridge?.pauseWakeWord?.()}catch{}
   const r=await fetch(SPEAK_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({text})});
   if(!r.ok)throw new Error("tts "+r.status);
   const bytes=await r.arrayBuffer();
@@ -117,19 +141,60 @@ async function speak(text){
   source.connect(audioCtx.destination);
   currentAudio=source;
   laia.classList.add("talking");
-  source.onended=()=>{laia.classList.remove("talking");if(currentAudio===source)currentAudio=null;statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"};
+  source.onended=()=>{laia.classList.remove("talking");if(currentAudio===source)currentAudio=null;statusEl.textContent=idleStatus();try{window.AndroidBridge?.resumeWakeWord?.()}catch{}};
   source.start(0);
  }catch(e){
   console.error("LAIA voice",e);
   laia.classList.remove("talking");
   statusEl.textContent="VOICE FAILED";
+  try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
  }
 }
+function idleStatus(){return window.AndroidBridge?"HEY LAIA":"VOICE ON"}
+
 async function brainReply(raw){
  const session=await refreshGate();if(!session)throw new Error("Login required");
- const res=await fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({message:raw,sessionId})});
+ const deviceContext={
+  localDateTime:new Date().toString(),
+  timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone||"unknown"
+ };
+ const body={message:raw,sessionId,deviceContext};
+ if(window.AndroidBridge)body.capabilities=["system_actions"];
+ const res=await fetch(BRAIN_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify(body)});
  if(!res.ok)throw new Error("Brain unavailable");
- const data=await res.json();return data.reply||null
+ return await res.json()
+}
+
+function executeSystemActions(actions){
+ if(!window.AndroidBridge||!Array.isArray(actions)||!actions.length)return "";
+ const confirmations=[];
+ for(const a of actions){
+  try{
+   if(a.type==="set_alarm"){
+    const h=Number(a.hour),m=Number(a.minute||0);
+    window.AndroidBridge.setAlarm(h,m,String(a.label||"LAIA"));
+    confirmations.push("Wecker auf "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" Uhr gestellt.");
+   }else if(a.type==="set_timer"){
+    window.AndroidBridge.setTimer(Number(a.seconds),String(a.label||"LAIA"));
+    confirmations.push("Timer läuft.");
+   }else if(a.type==="open_app"){
+    window.AndroidBridge.openApp(String(a.app||""));
+    const names={whatsapp:"WhatsApp",spotify:"Spotify",maps:"Maps",camera:"die Kamera",settings:"die Einstellungen",clock:"die Uhr"};
+    confirmations.push((names[a.app]||"Die App")+" ist geöffnet.");
+   }else if(a.type==="set_flashlight"){
+    const result=window.AndroidBridge.setFlashlight(Boolean(a.enabled));
+    confirmations.push(result==="permission_requested"?"Ich brauche kurz Kamerazugriff für die Taschenlampe.":"Taschenlampe "+(a.enabled?"an.":"aus."));
+   }else if(a.type==="create_calendar_event"){
+    const start=Date.parse(String(a.start_iso||""));
+    const end=Date.parse(String(a.end_iso||""));
+    if(Number.isFinite(start)){
+     window.AndroidBridge.createCalendarEvent(String(a.title||"LAIA"),start,Number.isFinite(end)?end:0,String(a.location||""),String(a.description||""));
+     confirmations.push("Kalendereintrag ist vorbereitet.");
+    }
+   }
+  }catch(e){console.error("System action",a,e)}
+ }
+ return confirmations.join(" ")
 }
 
 function stopSpeaking(){
@@ -288,9 +353,39 @@ else if(/liebe|mag dich|süss|süß/.test(t)){r="Awww. Das nehme ich jetzt einfa
 else if(/\?$/.test(raw.trim())){r="Hmm… gute Frage. Ich bin gerade noch die kleine Browser-Version von mir — für echte intelligente Antworten brauchen wir als Nächstes mein KI-Gehirn.";m="skeptical"}
 else {const opts=["Okayyy, erzähl weiter 👀","Mhm. Und was macht das gerade mit dir?","Ich hör dir zu :)","Das klingt nach einer Geschichte. Mehr davon."];r=opts[Math.floor(Math.random()*opts.length)]}
 setMood(m);setTimeout(()=>{add(r,"laia");speak(r);setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},2200)},350)}
-form.addEventListener("submit",async e=>{e.preventDefault();if(voiceOn)unlockAudio();const t=input.value.trim();if(!t)return;add(t,"me");input.value="";const native=window.tryAndroidCommand?.(t);if(native?.handled){add(native.reply,"laia");speak(native.reply);return}if(!(await refreshGate()))return;statusEl.textContent="LAIA THINKS…";try{const r=await brainReply(t);if(!r)throw new Error("Empty reply");setMood("happy");add(r,"laia");speak(r)}catch(err){add("Mein Gehirn ist gerade nicht erreichbar. Versuch es gleich nochmal :)","laia");setMood("skeptical")}finally{statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF"}});
-voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(voiceOn)unlockAudio();if(!voiceOn)stopSpeaking();statusEl.textContent=voiceOn?"VOICE ON":"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
+form.addEventListener("submit",async e=>{
+ e.preventDefault();if(voiceOn)unlockAudio();
+ const t=input.value.trim();if(!t)return;
+ add(t,"me");input.value="";
+ if(!(await refreshGate()))return;
+ statusEl.textContent="LAIA THINKS…";
+ try{
+  const data=await brainReply(t);
+  const actionText=executeSystemActions(data.actions||[]);
+  let r=(data.reply||"").trim();
+  if(actionText&&(!r||/^okay[.!]?$/i.test(r)))r=actionText;
+  else if(actionText&&r)r=r+" "+actionText;
+  if(!r)throw new Error("Empty reply");
+  setMood("happy");add(r,"laia");speak(r)
+ }catch(err){
+  console.error(err);add("Mein Gehirn ist gerade nicht erreichbar. Versuch es gleich nochmal.","laia");setMood("skeptical")
+ }finally{
+  if(!laia.classList.contains("talking"))statusEl.textContent=idleStatus()
+ }
+});
+voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(voiceOn)unlockAudio();if(!voiceOn)stopSpeaking();statusEl.textContent=voiceOn?idleStatus():"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
+textToggle.addEventListener("click",()=>{document.body.classList.toggle("text-open");if(document.body.classList.contains("text-open"))setTimeout(()=>input.focus(),80)});
 micBtn.addEventListener("click",startMic);
 musicBtn.addEventListener("click",recognizeMusic);
-laia.addEventListener("click",()=>{unlockAudio();setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)});
+
+window.receiveWakePhrase=(text)=>{
+ const t=String(text||"").trim();
+ statusEl.textContent="ICH HÖRE";
+ if(t){input.value=t;form.requestSubmit()}
+ else startMic()
+};
+
+laia.addEventListener("click",()=>{unlockAudio();if(window.AndroidBridge){startMic();return}setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)});
+
+if(window.AndroidBridge){statusEl.textContent="HEY LAIA";try{window.AndroidBridge.setWakeWordEnabled(true)}catch{}}
 </script></body></html>
