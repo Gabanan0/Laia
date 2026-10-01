@@ -72,7 +72,20 @@ try{
 async function refreshGate(){const {data:{session}}=await sb.auth.getSession();authgate.classList.toggle("hidden",!!session);return session}
 authEmail.value=OWNER_EMAIL;
 authButton.addEventListener("click",async()=>{const email=authEmail.value.trim().toLowerCase();if(email!==OWNER_EMAIL){authmsg.textContent="Dieser Zugang ist privat.";return}authButton.disabled=true;authmsg.textContent="Magic Link wird gesendet…";const redirectTo=window.AndroidBridge?"laia://auth":"https://gabanan0.github.io/Laia/";const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:redirectTo}});authmsg.textContent=error?(error.status===429?"Zu viele Versuche. Bitte kurz warten.":"Login konnte nicht gesendet werden."):"Check deine Mail ♡";authButton.disabled=false});
-sb.auth.onAuthStateChange(()=>setTimeout(refreshGate,0));refreshGate();
+async function consumeAuthCallback(){
+ try{
+  const hash=new URLSearchParams(location.hash.replace(/^#/,""));
+  const access_token=hash.get("access_token");
+  const refresh_token=hash.get("refresh_token");
+  if(access_token&&refresh_token){
+   const {error}=await sb.auth.setSession({access_token,refresh_token});
+   if(error)throw error;
+   history.replaceState({},document.title,location.pathname+location.search);
+  }
+ }catch(e){console.error("LAIA auth callback",e)}
+}
+sb.auth.onAuthStateChange(()=>setTimeout(refreshGate,0));
+(async()=>{await consumeAuthCallback();await refreshGate()})();
 function setMood(m){laia.className="face"+(m?" "+m:"")}
 function blink(){if(!laia.classList.contains("talking")){laia.classList.add("blink");setTimeout(()=>laia.classList.remove("blink"),150)}}
 setInterval(()=>{if(Math.random()>.55)blink()},1800);
