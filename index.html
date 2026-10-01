@@ -64,6 +64,8 @@ let musicStream=null;
 let musicChunks=[];
 let musicTimer=null;
 let isMusicListening=false;
+let conversationMode=false;
+let followupTimer=null;
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
@@ -109,8 +111,15 @@ async function consumeAuthCallback(){
 }
 sb.auth.onAuthStateChange(()=>setTimeout(refreshGate,0));
 (async()=>{await consumeAuthCallback();await refreshGate()})();
-function setMood(m){laia.className="face"+(m?" "+m:"")}
-function blink(){if(!laia.classList.contains("talking")){laia.classList.add("blink");setTimeout(()=>laia.classList.remove("blink"),150)}}
+function setMood(m){
+ ["happy","skeptical","surprised"].forEach(x=>laia.classList.remove(x));
+ if(m)laia.classList.add(m)
+}
+function setVisualState(s){
+ ["listening","thinking","talking"].forEach(x=>laia.classList.remove(x));
+ if(s)laia.classList.add(s)
+}
+function blink(){if(!document.body.classList.contains("native-app")&&!laia.classList.contains("talking")){laia.classList.add("blink");setTimeout(()=>laia.classList.remove("blink"),150)}}
 setInterval(()=>{if(Math.random()>.55)blink()},1800);
 document.addEventListener("pointermove",e=>{const x=(e.clientX/innerWidth-.5)*15,y=(e.clientY/innerHeight-.5)*10;pupils.forEach(p=>p.style.transform=`translate(${x}px,${y}px)`)});
 function add(text,who){const d=document.createElement("div");d.className="msg "+who;d.textContent=text;messages.appendChild(d);messages.scrollTop=messages.scrollHeight}
@@ -140,12 +149,24 @@ async function speak(text){
   source.buffer=buffer;
   source.connect(audioCtx.destination);
   currentAudio=source;
-  laia.classList.add("talking");
-  source.onended=()=>{laia.classList.remove("talking");if(currentAudio===source)currentAudio=null;statusEl.textContent=idleStatus();try{window.AndroidBridge?.resumeWakeWord?.()}catch{}};
+  setVisualState("talking");
+  source.onended=()=>{
+   setVisualState("");
+   if(currentAudio===source)currentAudio=null;
+   if(conversationMode&&window.AndroidBridge&&!document.body.classList.contains("text-open")&&document.visibilityState==="visible"){
+    statusEl.textContent="…";
+    clearTimeout(followupTimer);
+    followupTimer=setTimeout(()=>startMic(true),430)
+   }else{
+    statusEl.textContent=idleStatus();
+    try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
+   }
+  };
   source.start(0);
  }catch(e){
   console.error("LAIA voice",e);
-  laia.classList.remove("talking");
+  setVisualState("");
+  conversationMode=false;
   statusEl.textContent="VOICE FAILED";
   try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
  }
@@ -198,8 +219,9 @@ function executeSystemActions(actions){
 }
 
 function stopSpeaking(){
+ clearTimeout(followupTimer);followupTimer=null;
  if(currentAudio){try{currentAudio.stop()}catch{}currentAudio=null}
- laia.classList.remove("talking")
+ setVisualState("")
 }
 
 function base64ToBlob(base64,type){
@@ -209,7 +231,8 @@ function base64ToBlob(base64,type){
 }
 
 async function handleVoiceBlob(blob,type){
- statusEl.textContent="LAIA LISTENS…";
+ setVisualState("thinking");
+ statusEl.textContent="VERSTEHE…";
  const session=await refreshGate();if(!session)throw new Error("Login required");
  const r=await fetch(LISTEN_ENDPOINT,{method:"POST",headers:{"Content-Type":type,"apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:blob});
  if(!r.ok)throw new Error("stt "+r.status);
@@ -218,12 +241,13 @@ async function handleVoiceBlob(blob,type){
 }
 
 async function handleMusicBlob(blob,type){
- statusEl.textContent="RECOGNIZING…";
+ setVisualState("thinking");
+ statusEl.textContent="ERKENNE…";
  const session=await refreshGate();if(!session)throw new Error("Login required");
  const r=await fetch(MUSIC_ENDPOINT,{method:"POST",headers:{"Content-Type":type,"apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:blob});
  if(!r.ok)throw new Error("music "+r.status);
  const data=await r.json(),m=data.match;
- if(!m){const msg="Hmm. Den Track habe ich nicht erkannt.";add(msg,"laia");if(voiceOn)speak(msg)}
+ if(!m){const msg="Hmm. Den Track habe ich nicht erkannt.";add(msg,"laia");if(voiceOn)speak(msg);else setVisualState("")}
  else{const album=m.album?" — "+m.album:"";add("♪ "+m.artist+" — "+m.title+album,"laia");if(voiceOn)speak("Das ist "+m.title+" von "+m.artist+".")}
 }
 
@@ -235,25 +259,45 @@ window.receiveNativeRecording=async(base64,type,mode)=>{
    await handleMusicBlob(blob,type||"audio/mp4")
   }else{
    clearTimeout(micTimer);micTimer=null;isRecording=false;micBtn.classList.remove("recording");micBtn.textContent="●";
+   conversationMode=true;
    await handleVoiceBlob(blob,type||"audio/mp4")
   }
- }catch(e){console.error("Native recording",e);statusEl.textContent=mode==="music"?"MUSIC FAILED":"MIC FAILED"}
+ }catch(e){
+  console.error("Native recording",e);
+  setVisualState("");
+  statusEl.textContent=mode==="music"?"MUSIC FAILED":"MIC FAILED"
+ }
+};
+
+window.nativeVoiceTimeout=()=>{
+ clearTimeout(micTimer);micTimer=null;
+ isRecording=false;micBtn.classList.remove("recording");micBtn.textContent="●";
+ conversationMode=false;
+ setVisualState("");
+ statusEl.textContent=idleStatus();
+ try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
 };
 
 function stopMic(){
  if(mediaRecorder&&mediaRecorder.state!=="inactive")mediaRecorder.stop()
 }
 
-async function startMic(){
+async function startMic(followup=false){
  if(window.AndroidBridge?.startRecording){
   if(isRecording){window.AndroidBridge.stopRecording();return}
   try{
+   clearTimeout(followupTimer);followupTimer=null;
+   if(!followup)conversationMode=true;
    stopSpeaking();
    if(!window.AndroidBridge.startRecording("voice"))throw new Error("native mic unavailable");
-   isRecording=true;micBtn.classList.add("recording");micBtn.textContent="■";statusEl.textContent="LISTENING…";
-   micTimer=setTimeout(()=>window.AndroidBridge.stopRecording(),45000);
+   isRecording=true;micBtn.classList.add("recording");micBtn.textContent="■";
+   setVisualState("listening");statusEl.textContent="ICH HÖRE";
+   micTimer=setTimeout(()=>window.AndroidBridge.stopRecording(),19000);
    return
-  }catch(e){console.error("Native microphone",e);statusEl.textContent="MIC FAILED";return}
+  }catch(e){
+   console.error("Native microphone",e);
+   setVisualState("");conversationMode=false;statusEl.textContent="MIC FAILED";return
+  }
  }
  if(isRecording){stopMic();return}
  if(!navigator.mediaDevices?.getUserMedia||!("MediaRecorder"in window)){statusEl.textContent="MIC UNAVAILABLE";return}
@@ -291,13 +335,14 @@ function stopMusic(){
 }
 
 async function recognizeMusic(){
+ conversationMode=false;clearTimeout(followupTimer);followupTimer=null;
  if(isRecording){statusEl.textContent="STOP MIC FIRST";return}
  if(window.AndroidBridge?.startRecording){
   if(isMusicListening){window.AndroidBridge.stopRecording();return}
   try{
    stopSpeaking();
    if(!window.AndroidBridge.startRecording("music"))throw new Error("native music mic unavailable");
-   isMusicListening=true;musicBtn.classList.add("listening");musicBtn.textContent="■";statusEl.textContent="LISTENING FOR MUSIC…";
+   isMusicListening=true;musicBtn.classList.add("listening");musicBtn.textContent="■";setVisualState("listening");statusEl.textContent="MUSIK…";
    musicTimer=setTimeout(()=>window.AndroidBridge.stopRecording(),12000);
    return
   }catch(e){console.error("Native music microphone",e);statusEl.textContent="MUSIC FAILED";return}
@@ -358,7 +403,7 @@ form.addEventListener("submit",async e=>{
  const t=input.value.trim();if(!t)return;
  add(t,"me");input.value="";
  if(!(await refreshGate()))return;
- statusEl.textContent="LAIA THINKS…";
+ setVisualState("thinking");statusEl.textContent="DENKE…";
  try{
   const data=await brainReply(t);
   const actionText=executeSystemActions(data.actions||[]);
@@ -374,18 +419,34 @@ form.addEventListener("submit",async e=>{
  }
 });
 voiceBtn.addEventListener("click",()=>{voiceOn=!voiceOn;if(voiceOn)unlockAudio();if(!voiceOn)stopSpeaking();statusEl.textContent=voiceOn?idleStatus():"VOICE OFF";voiceBtn.textContent=voiceOn?"◉":"○"});
-textToggle.addEventListener("click",()=>{document.body.classList.toggle("text-open");if(document.body.classList.contains("text-open"))setTimeout(()=>input.focus(),80)});
+textToggle.addEventListener("click",()=>{
+ const opening=!document.body.classList.contains("text-open");
+ document.body.classList.toggle("text-open");
+ if(opening){
+  conversationMode=false;clearTimeout(followupTimer);followupTimer=null;
+  try{window.AndroidBridge?.resumeWakeWord?.()}catch{}
+  setTimeout(()=>input.focus(),80)
+ }
+});
 micBtn.addEventListener("click",startMic);
 musicBtn.addEventListener("click",recognizeMusic);
 
 window.receiveWakePhrase=(text)=>{
  const t=String(text||"").trim();
+ conversationMode=true;
  statusEl.textContent="ICH HÖRE";
- if(t){input.value=t;form.requestSubmit()}
- else startMic()
+ setVisualState("listening");
+ if(t){
+  setVisualState("thinking");
+  input.value=t;form.requestSubmit()
+ }else startMic(true)
 };
 
-laia.addEventListener("click",()=>{unlockAudio();if(window.AndroidBridge){startMic();return}setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)});
+laia.addEventListener("click",()=>{
+ unlockAudio();
+ if(window.AndroidBridge){conversationMode=true;startMic(true);return}
+ setMood("happy");speak("Hey. Ich bin da.");setTimeout(()=>{if(!laia.classList.contains("talking"))setMood("")},1800)
+});
 
 if(window.AndroidBridge){statusEl.textContent="HEY LAIA";try{window.AndroidBridge.setWakeWordEnabled(true)}catch{}}
 </script></body></html>
