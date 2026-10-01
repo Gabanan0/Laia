@@ -66,6 +66,8 @@ let musicTimer=null;
 let isMusicListening=false;
 let conversationMode=false;
 let followupTimer=null;
+let lastActionSignature="";
+let lastActionAt=0;
 const SUPABASE_URL="https://kscrwxucrmbuhdazrdox.supabase.co";
 const SUPABASE_KEY="sb_publishable_LQHQALQ5DfvNjzB5E7AKXQ_zlpGiI9x";
 const BRAIN_ENDPOINT=SUPABASE_URL+"/functions/v1/laia-chat";
@@ -191,6 +193,20 @@ function executeSystemActions(actions){
  const confirmations=[];
  for(const a of actions){
   try{
+   const sig=JSON.stringify(a);
+   const now=Date.now();
+   if(sig===lastActionSignature&&now-lastActionAt<15000){
+    console.warn("Duplicate system action blocked",a);
+    continue
+   }
+
+   const leavesApp=["set_alarm","set_timer","open_app","create_calendar_event"].includes(a.type);
+   if(leavesApp){
+    conversationMode=false;
+    clearTimeout(followupTimer);followupTimer=null;
+    try{window.AndroidBridge.pauseWakeWord?.()}catch{}
+   }
+
    if(a.type==="set_alarm"){
     const h=Number(a.hour),m=Number(a.minute||0);
     window.AndroidBridge.setAlarm(h,m,String(a.label||"LAIA"));
@@ -212,7 +228,12 @@ function executeSystemActions(actions){
      window.AndroidBridge.createCalendarEvent(String(a.title||"LAIA"),start,Number.isFinite(end)?end:0,String(a.location||""),String(a.description||""));
      confirmations.push("Kalendereintrag ist vorbereitet.");
     }
+   }else{
+    continue
    }
+
+   lastActionSignature=sig;
+   lastActionAt=now;
   }catch(e){console.error("System action",a,e)}
  }
  return confirmations.join(" ")
