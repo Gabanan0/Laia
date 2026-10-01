@@ -53,6 +53,11 @@ class MainActivity : Activity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                if (url.startsWith(laiaUrl)) injectLaiaFace()
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
                 return if (uri.scheme == "https" && uri.host == "gabanan0.github.io") {
@@ -68,6 +73,37 @@ class MainActivity : Activity() {
             it.startsWith("https://gabanan0.github.io/Laia/")
         } ?: laiaUrl
         webView.loadUrl(startUrl)
+    }
+
+    private fun injectLaiaFace() {
+        val faceData = LaiaFace.dataUrl()
+        val js = """
+            (() => {
+              const face = document.querySelector('#laia');
+              if (!face || document.querySelector('#laiaNativePortrait')) return;
+              const style = document.createElement('style');
+              style.id = 'laiaNativeFaceStyle';
+              style.textContent = `
+                .face{width:min(66vw,280px)!important;height:min(66vw,280px)!important;flex:0 0 min(66vw,280px)!important;margin-top:clamp(72px,10vh,112px)!important;border-radius:50%!important;position:relative!important;overflow:visible!important;transition:transform .28s ease,filter .28s ease!important}
+                .face .brow,.face .eye,.face .mouth{display:none!important}
+                #laiaNativePortrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;image-rendering:auto;box-shadow:0 0 0 1px rgba(255,145,76,.38),0 0 32px rgba(255,92,24,.12);transition:transform .28s ease,filter .28s ease,opacity .12s ease}
+                .face.happy #laiaNativePortrait{transform:scale(1.025) translateY(-2px);filter:brightness(1.08) saturate(1.06)}
+                .face.skeptical #laiaNativePortrait{transform:rotate(-1.4deg) scale(.995);filter:brightness(.94) contrast(1.08)}
+                .face.surprised #laiaNativePortrait{transform:scale(1.045);filter:brightness(1.12) contrast(1.06)}
+                .face.blink #laiaNativePortrait{filter:brightness(.62) contrast(1.1)}
+                .face.talking #laiaNativePortrait{animation:laiaFacePulse .42s ease-in-out infinite alternate}
+                @keyframes laiaFacePulse{from{transform:scale(1)}to{transform:scale(1.018);filter:brightness(1.06)}}
+              `;
+              document.head.appendChild(style);
+              face.innerHTML = '';
+              const img = document.createElement('img');
+              img.id = 'laiaNativePortrait';
+              img.alt = 'LAIA';
+              img.src = '""" + faceData + """';
+              face.appendChild(img);
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js, null)
     }
 
     override fun onNewIntent(intent: Intent) {
