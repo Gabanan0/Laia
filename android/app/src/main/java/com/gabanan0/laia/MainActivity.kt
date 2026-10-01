@@ -8,6 +8,8 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.MediaRecorder
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.os.Handler
 import android.os.Looper
 import android.provider.AlarmClock
@@ -42,6 +44,10 @@ class MainActivity : Activity() {
     private var vadNoiseFloor = 180.0
 
     private var wakeRecognizer: SpeechRecognizer? = null
+    private var commandRecognizer: SpeechRecognizer? = null
+    private var commandListening = false
+    private var nativeTts: TextToSpeech? = null
+    private var nativeTtsReady = false
     private var wakeEnabled = true
     private var wakeListening = false
     private var isResumed = false
@@ -50,7 +56,7 @@ class MainActivity : Activity() {
     private var pendingTorchState: Boolean? = null
 
     private val laiaUrl = "https://gabanan0.github.io/Laia/"
-    private val appVersion = "0.5.0"
+    private val appVersion = "0.5.1"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +67,34 @@ class MainActivity : Activity() {
 
         webView = WebView(this)
         setContentView(webView)
+
+        nativeTts = TextToSpeech(this) { status ->
+            nativeTtsReady = status == TextToSpeech.SUCCESS
+            if (nativeTtsReady) {
+                nativeTts?.language = Locale.GERMAN
+                nativeTts?.setSpeechRate(1.03f)
+                nativeTts?.setPitch(1.04f)
+                nativeTts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) {
+                        runOnUiThread {
+                            webView.evaluateJavascript(
+                                "window.nativeSpeechEnded && window.nativeSpeechEnded()",
+                                null
+                            )
+                        }
+                    }
+                    override fun onError(utteranceId: String?) {
+                        runOnUiThread {
+                            webView.evaluateJavascript(
+                                "window.nativeSpeechFailed && window.nativeSpeechFailed()",
+                                null
+                            )
+                        }
+                    }
+                })
+            }
+        }
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
@@ -447,6 +481,116 @@ class MainActivity : Activity() {
         }
     }
 
+    fun startCommandListening(): Boolean {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+            return false
+        }
+        if (commandListening) return true
+
+        pauseWakeWord()
+        vadHandler.removeCallbacksAndMessages(null)
+
+        runOnUiThread {
+            try {
+                if (commandRecognizer == null) {
+                    commandRecognizer = SpeechRecognizer.createSpeechRecognizer(this).also { recognizer ->
+                        recognizer.setRecognitionListener(object : RecognitionListener {
+                            override fun onReadyForSpeech(params: Bundle?) {
+                                webView.evaluateJavascript(
+                                    "window.nativeSpeechReady && window.nativeSpeechReady()",
+                                    null
+                                )
+                            }
+                            override fun onBeginningOfSpeech() {}
+                            override fun onRmsChanged(rmsdB: Float) {}
+                            override fun onBufferReceived(buffer: ByteArray?) {}
+                            override fun onEndOfSpeech() {}
+
+                            override fun onError(error: Int) {
+                                commandListening = false
+                                webView.evaluateJavascript(
+                                    "window.nativeVoiceTimeout && window.nativeVoiceTimeout()",
+                                    null
+                                )
+                                resumeWakeWord(650)
+                            }
+
+                            override fun onResults(results: Bundle?) {
+                                commandListening = false
+                                val text = results
+                                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                                    ?.firstOrNull()
+                                    ?.trim()
+                                    .orEmpty()
+
+                                if (text.isNotBlank()) {
+                                    val quoted = JSONObject.quote(text)
+                                    webView.evaluateJavascript(
+                                        "window.receiveNativeTranscript && window.receiveNativeTranscript($quoted)",
+                                        null
+                                    )
+                                } else {
+                                    webView.evaluateJavascript(
+                                        "window.nativeVoiceTimeout && window.nativeVoiceTimeout()",
+                                        null
+                                    )
+                                    resumeWakeWord(650)
+                                }
+                            }
+
+                            override fun onPartialResults(partialResults: Bundle?) {}
+                            override fun onEvent(eventType: Int, params: Bundle?) {}
+                        })
+                    }
+                }
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (commandListening) return@postDelayed
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "de-CH")
+                        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 850L)
+                        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 650L)
+                    }
+                    commandRecognizer?.startListening(intent)
+                    commandListening = true
+                }, 220L)
+            } catch (_: Exception) {
+                commandListening = false
+                webView.evaluateJavascript(
+                    "window.nativeVoiceTimeout && window.nativeVoiceTimeout()",
+                    null
+                )
+                resumeWakeWord(650)
+            }
+        }
+        return true
+    }
+
+    fun speakNative(text: String): Boolean {
+        if (text.isBlank() || !nativeTtsReady) return false
+        pauseWakeWord()
+        runOnUiThread {
+            try {
+                nativeTts?.speak(
+                    text.take(3000),
+                    TextToSpeech.QUEUE_FLUSH,
+                    Bundle(),
+                    "laia-" + System.currentTimeMillis()
+                )
+            } catch (_: Exception) {
+                webView.evaluateJavascript(
+                    "window.nativeSpeechFailed && window.nativeSpeechFailed()",
+                    null
+                )
+            }
+        }
+        return true
+    }
+
     fun setTorch(enabled: Boolean): String {
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             pendingTorchState = enabled
@@ -505,6 +649,12 @@ class MainActivity : Activity() {
         pauseWakeWord()
         try { wakeRecognizer?.destroy() } catch (_: Exception) {}
         wakeRecognizer = null
+        try { commandRecognizer?.destroy() } catch (_: Exception) {}
+        commandRecognizer = null
+        commandListening = false
+        try { nativeTts?.stop(); nativeTts?.shutdown() } catch (_: Exception) {}
+        nativeTts = null
+        nativeTtsReady = false
         try { nativeRecorder?.release() } catch (_: Exception) {}
         nativeRecorder = null
         super.onDestroy()
@@ -533,6 +683,12 @@ class LaiaAndroidBridge(private val activity: MainActivity) {
 
     @JavascriptInterface
     fun stopRecording(): Boolean = activity.stopNativeRecording()
+
+    @JavascriptInterface
+    fun startSpeechInput(): Boolean = activity.startCommandListening()
+
+    @JavascriptInterface
+    fun speakNative(text: String): Boolean = activity.speakNative(text)
 
     @JavascriptInterface
     fun pauseWakeWord() = activity.pauseWakeWord()
